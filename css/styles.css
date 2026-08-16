@@ -393,6 +393,14 @@ html, body {
   font-size: 11px;
 }
 
+.xg-occupy {
+  letter-spacing: .46em;
+  color: #e8c9a0;
+  text-shadow: 0 0 18px #c47a4040;
+  margin: 2px 0 10px;
+  font-size: 12px;
+}
+
 .xg-title-screen {
   pointer-events: none;
   background: linear-gradient(#0000 42%, #04060e40 68%, #030308d8);

@@ -75,6 +75,31 @@ overmindImg.src = "img/overmind.jpg";
 const roadsterImg = new Image();
 roadsterImg.src = "img/roadster.png";
 
+const shRaw = new Image();
+let shKeyed = null;
+function keySuperheavy() {
+  if (!shRaw.naturalWidth || shKeyed) return;
+  const c = document.createElement("canvas");
+  c.width = shRaw.naturalWidth;
+  c.height = shRaw.naturalHeight;
+  const g = c.getContext("2d");
+  g.drawImage(shRaw, 0, 0);
+  const data = g.getImageData(0, 0, c.width, c.height);
+  const p = data.data;
+  for (let i = 0; i < p.length; i += 4) {
+    const r = p[i];
+    const gv = p[i + 1];
+    const b = p[i + 2];
+    if (r > 232 && gv > 232 && b > 232) p[i + 3] = 0;
+    else if (r > 200 && gv > 200 && b > 200) p[i + 3] = Math.max(0, 255 - (r + gv + b - 600));
+  }
+  g.putImageData(data, 0, 0);
+  shKeyed = c;
+}
+shRaw.onload = keySuperheavy;
+shRaw.src = "img/superheavy.png";
+if (shRaw.complete) keySuperheavy();
+
 function worldOf(s) {
   return WORLDS[s.bg] || WORLDS.mars;
 }
@@ -268,103 +293,125 @@ function flame(ctx, t, on) {
 }
 
 export function drawStarship(ctx, size, t, thrusting) {
-  const L = size * 1.35;
-  const W = size * 0.28;
+  const L = size * 1.55;
+  const W = size * 0.22;
 
   ctx.save();
-  // aft flaps
-  ctx.fillStyle = "#8a9298";
-  ctx.beginPath();
-  ctx.moveTo(-L * 0.18, -W * 0.55);
-  ctx.lineTo(-L * 0.42, -W * 1.55);
-  ctx.lineTo(-L * 0.28, -W * 0.4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(-L * 0.18, W * 0.55);
-  ctx.lineTo(-L * 0.42, W * 1.55);
-  ctx.lineTo(-L * 0.28, W * 0.4);
-  ctx.closePath();
-  ctx.fill();
+
+  // aft flaps — large, rear, like Starship elonets
+  ctx.fillStyle = "#8d969c";
+  ctx.strokeStyle = "rgba(30, 34, 38, 0.35)";
+  ctx.lineWidth = 0.8;
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(-L * 0.08, s * W * 0.55);
+    ctx.lineTo(-L * 0.38, s * W * 2.05);
+    ctx.lineTo(-L * 0.18, s * W * 2.05);
+    ctx.lineTo(-L * 0.02, s * W * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
 
   // forward flaps
-  ctx.fillStyle = "#9aa3aa";
-  ctx.beginPath();
-  ctx.moveTo(L * 0.22, -W * 0.55);
-  ctx.lineTo(L * 0.02, -W * 1.25);
-  ctx.lineTo(L * 0.12, -W * 0.35);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(L * 0.22, W * 0.55);
-  ctx.lineTo(L * 0.02, W * 1.25);
-  ctx.lineTo(L * 0.12, W * 0.35);
-  ctx.closePath();
-  ctx.fill();
+  ctx.fillStyle = "#a3adb4";
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(L * 0.18, s * W * 0.55);
+    ctx.lineTo(L * 0.02, s * W * 1.55);
+    ctx.lineTo(L * 0.16, s * W * 1.55);
+    ctx.lineTo(L * 0.28, s * W * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
 
-  // body
+  // stainless cylinder + pointed nose
   const body = ctx.createLinearGradient(0, -W, 0, W);
-  body.addColorStop(0, "#6e767c");
-  body.addColorStop(0.22, "#d8dee4");
-  body.addColorStop(0.5, "#f4f7fa");
-  body.addColorStop(0.78, "#b8c0c6");
-  body.addColorStop(1, "#4a3a32");
+  body.addColorStop(0, "#5c646a");
+  body.addColorStop(0.18, "#c5ced4");
+  body.addColorStop(0.42, "#f3f6f8");
+  body.addColorStop(0.62, "#cfd6dc");
+  body.addColorStop(0.82, "#8a7a6e");
+  body.addColorStop(1, "#2c221c");
   ctx.fillStyle = body;
   ctx.beginPath();
-  ctx.moveTo(L * 0.58, 0);
-  ctx.quadraticCurveTo(L * 0.42, -W * 0.95, L * 0.12, -W);
-  ctx.lineTo(-L * 0.32, -W * 0.92);
-  ctx.quadraticCurveTo(-L * 0.48, -W * 0.55, -L * 0.5, 0);
-  ctx.quadraticCurveTo(-L * 0.48, W * 0.55, -L * 0.32, W * 0.92);
-  ctx.lineTo(L * 0.12, W);
-  ctx.quadraticCurveTo(L * 0.42, W * 0.95, L * 0.58, 0);
+  ctx.moveTo(L * 0.72, 0);
+  ctx.quadraticCurveTo(L * 0.52, -W * 0.55, L * 0.22, -W);
+  ctx.lineTo(-L * 0.38, -W * 0.96);
+  ctx.quadraticCurveTo(-L * 0.52, -W * 0.55, -L * 0.54, 0);
+  ctx.quadraticCurveTo(-L * 0.52, W * 0.55, -L * 0.38, W * 0.96);
+  ctx.lineTo(L * 0.22, W);
+  ctx.quadraticCurveTo(L * 0.52, W * 0.55, L * 0.72, 0);
   ctx.closePath();
   ctx.fill();
 
-  // heat-tile belly
-  ctx.fillStyle = "rgba(42, 28, 22, 0.72)";
+  // black hex heat-tile belly
+  ctx.save();
   ctx.beginPath();
-  ctx.moveTo(L * 0.4, W * 0.18);
-  ctx.quadraticCurveTo(L * 0.2, W * 0.92, -L * 0.1, W * 0.88);
-  ctx.lineTo(-L * 0.32, W * 0.7);
-  ctx.quadraticCurveTo(-L * 0.2, W * 0.35, L * 0.4, W * 0.18);
+  ctx.moveTo(L * 0.42, W * 0.12);
+  ctx.quadraticCurveTo(L * 0.18, W * 0.98, -L * 0.12, W * 0.94);
+  ctx.lineTo(-L * 0.36, W * 0.72);
+  ctx.quadraticCurveTo(-L * 0.1, W * 0.28, L * 0.42, W * 0.12);
   ctx.closePath();
+  ctx.clip();
+  ctx.fillStyle = "#1a1410";
   ctx.fill();
+  ctx.strokeStyle = "rgba(70, 48, 32, 0.55)";
+  ctx.lineWidth = 0.6;
+  const hex = size * 0.085;
+  for (let row = -2; row < 8; row++) {
+    for (let col = -6; col < 8; col++) {
+      const hx = -L * 0.28 + col * hex * 1.55 + (row % 2 ? hex * 0.78 : 0);
+      const hy = W * 0.22 + row * hex * 0.9;
+      ctx.beginPath();
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2 + Math.PI / 6;
+        const px = hx + Math.cos(a) * hex * 0.48;
+        const py = hy + Math.sin(a) * hex * 0.48;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 
-  // windows
-  ctx.fillStyle = "#1a222c";
-  ctx.beginPath();
-  ctx.ellipse(L * 0.28, -W * 0.18, size * 0.055, size * 0.035, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "rgba(180, 220, 255, 0.55)";
-  ctx.beginPath();
-  ctx.ellipse(L * 0.275, -W * 0.2, size * 0.025, size * 0.014, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // rings
-  ctx.strokeStyle = "rgba(40, 48, 56, 0.28)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(-L * 0.08, -W * 0.86);
-  ctx.lineTo(-L * 0.08, W * 0.86);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(L * 0.08, -W * 0.9);
-  ctx.lineTo(L * 0.08, W * 0.9);
-  ctx.stroke();
-
-  // engines
-  ctx.fillStyle = "#2a3036";
-  for (const oy of [-W * 0.38, 0, W * 0.38]) {
+  // weld rings
+  ctx.strokeStyle = "rgba(40, 48, 56, 0.32)";
+  ctx.lineWidth = 0.9;
+  for (const x of [-L * 0.22, -L * 0.02, L * 0.16]) {
     ctx.beginPath();
-    ctx.ellipse(-L * 0.48, oy, size * 0.07, size * 0.055, 0, 0, Math.PI * 2);
+    ctx.moveTo(x, -W * 0.92);
+    ctx.lineTo(x, W * 0.92);
+    ctx.stroke();
+  }
+
+  // payload windows
+  ctx.fillStyle = "#121820";
+  ctx.beginPath();
+  ctx.ellipse(L * 0.38, -W * 0.22, size * 0.05, size * 0.028, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(170, 210, 240, 0.55)";
+  ctx.beginPath();
+  ctx.ellipse(L * 0.375, -W * 0.235, size * 0.02, size * 0.012, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 6 raptor bells
+  ctx.fillStyle = "#1c2228";
+  const bells = [-W * 0.62, -W * 0.36, -W * 0.12, W * 0.12, W * 0.36, W * 0.62];
+  for (const oy of bells) {
+    ctx.beginPath();
+    ctx.ellipse(-L * 0.52, oy * 0.7, size * 0.055, size * 0.038, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   if (thrusting) {
-    ctx.fillStyle = `rgba(255, 200, 120, ${0.55 + Math.sin(t * 40) * 0.25})`;
-    for (const oy of [-W * 0.38, 0, W * 0.38]) {
+    flame(ctx, t, true);
+    for (const oy of bells) {
+      ctx.fillStyle = `rgba(255, 200, 120, ${0.5 + Math.sin(t * 42 + oy * 8) * 0.25})`;
       ctx.beginPath();
-      ctx.ellipse(-L * 0.5, oy, size * 0.045, size * 0.032, 0, 0, Math.PI * 2);
+      ctx.ellipse(-L * 0.56, oy * 0.7, size * 0.04, size * 0.024, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -372,56 +419,38 @@ export function drawStarship(ctx, size, t, thrusting) {
   ctx.restore();
 }
 
-function drawSuperHeavy(ctx, size, t, thrusting) {
-  const L = size * 2.05;
-  const W = size * 0.32;
+function drawRaptorPlume(ctx, t, scale, on) {
+  if (!on) return;
+  const flick = 0.82 + Math.sin(t * 41) * 0.12 + Math.sin(t * 67) * 0.08;
+  for (let i = 0; i < 7; i++) {
+    const u = i / 7;
+    ctx.globalAlpha = (0.16 + (1 - u) * 0.28) * flick;
+    ctx.fillStyle = i < 2 ? "#fff6c8" : i < 4 ? "#ffb347" : "#ff4a14";
+    ctx.beginPath();
+    ctx.ellipse(0, scale * (0.18 + i * 0.16), scale * (0.16 - u * 0.06), scale * (0.22 + i * 0.14), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSuperHeavyPhoto(ctx, hgt, t, thrusting, tilt = 0) {
+  const img = shKeyed && shKeyed.width ? shKeyed : (shRaw.complete && shRaw.naturalWidth ? shRaw : null);
+  const aspect = img ? img.width / img.height : 0.38;
+  const ih = hgt;
+  const iw = ih * aspect;
   ctx.save();
-  ctx.fillStyle = "#7a8288";
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(L * 0.18, side * W * 0.55);
-    ctx.lineTo(L * 0.42, side * W * 1.55);
-    ctx.lineTo(L * 0.08, side * W * 0.5);
-    ctx.closePath();
-    ctx.fill();
-  }
-  const body = ctx.createLinearGradient(0, -W, 0, W);
-  body.addColorStop(0, "#5e666c");
-  body.addColorStop(0.25, "#d0d6dc");
-  body.addColorStop(0.5, "#f2f5f7");
-  body.addColorStop(0.78, "#b0b8be");
-  body.addColorStop(1, "#3a3230");
-  ctx.fillStyle = body;
-  ctx.beginPath();
-  ctx.moveTo(L * 0.5, 0);
-  ctx.lineTo(L * 0.42, -W);
-  ctx.lineTo(-L * 0.48, -W * 0.95);
-  ctx.quadraticCurveTo(-L * 0.55, 0, -L * 0.48, W * 0.95);
-  ctx.lineTo(L * 0.42, W);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = "rgba(40,48,56,0.28)";
-  ctx.lineWidth = 1;
-  for (const x of [-L * 0.22, 0, L * 0.22]) {
-    ctx.beginPath();
-    ctx.moveTo(x, -W * 0.88);
-    ctx.lineTo(x, W * 0.88);
-    ctx.stroke();
-  }
-  ctx.fillStyle = "#1c2228";
-  for (let i = -2; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.ellipse(-L * 0.5, i * W * 0.28, size * 0.06, size * 0.045, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ctx.rotate(tilt);
+  if (img) ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
   if (thrusting) {
-    flame(ctx, t, true);
-    ctx.fillStyle = `rgba(255,180,80,${0.45 + Math.sin(t * 36) * 0.2})`;
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath();
-      ctx.ellipse(-L * 0.54, i * W * 0.28, size * 0.05, size * 0.03, 0, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.save();
+    ctx.translate(0, ih * 0.46);
+    for (const ox of [-iw * 0.16, -iw * 0.06, iw * 0.04, iw * 0.14, -iw * 0.22, iw * 0.2]) {
+      ctx.save();
+      ctx.translate(ox, 0);
+      drawRaptorPlume(ctx, t + ox, ih * 0.22, true);
+      ctx.restore();
     }
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -429,47 +458,45 @@ function drawSuperHeavy(ctx, size, t, thrusting) {
 function drawIntro(ctx, s, w, h) {
   const t = s.intro || 0;
   const rise = Math.min(1, t / 2.05);
-  const y0 = h + 140 - rise * (h * 0.52);
+  const y0 = h + 160 - rise * (h * 0.48);
   const sep = Math.max(0, t - 2.25);
-  const sepU = Math.min(1, sep / 2.4);
+  const sepU = Math.min(1, sep / 2.5);
   const cx = w * 0.5;
-  const shipY = y0 - 78 - sepU * h * 0.22;
-  const boostY = y0 + 52 + sepU * h * 0.34;
-  const boostA = -Math.PI / 2 + sepU * Math.PI * 0.92;
-  const shipA = -Math.PI / 2;
-  const shipThrust = t > 2.2;
-  const boostThrust = t < 2.35 || (t > 3.6 && t < 6.8);
+  const boostH = Math.min(h * 0.62, 420);
+  const shipY = y0 - boostH * 0.52 - sepU * h * 0.2;
+  const boostY = y0 + sepU * h * 0.32;
+  const boostTilt = sepU * 0.85;
+  const shipThrust = t > 2.15;
+  const boostThrust = t < 2.4 || (t > 3.55 && t < 7.0);
 
   ctx.save();
-  ctx.globalAlpha = t < 0.35 ? t / 0.35 : t > 7.1 ? Math.max(0, 1 - (t - 7.1) / 0.5) : 1;
+  ctx.globalAlpha = t < 0.3 ? t / 0.3 : t > 7.2 ? Math.max(0, 1 - (t - 7.2) / 0.55) : 1;
 
   ctx.save();
   ctx.translate(cx, boostY);
-  ctx.rotate(boostA);
-  drawSuperHeavy(ctx, 36, s.t, boostThrust);
+  drawSuperHeavyPhoto(ctx, boostH, s.t, boostThrust, boostTilt);
   ctx.restore();
 
   ctx.save();
   ctx.translate(cx, shipY);
-  ctx.rotate(shipA);
-  drawStarship(ctx, 30, s.t, shipThrust);
+  ctx.rotate(-Math.PI / 2);
+  drawStarship(ctx, 34, s.t, shipThrust);
   ctx.restore();
 
-  if (t > 2.15 && t < 2.7) {
-    const flash = 1 - Math.abs(t - 2.35) / 0.35;
-    ctx.fillStyle = `rgba(255, 230, 180, ${flash * 0.35})`;
+  if (t > 2.12 && t < 2.75) {
+    const flash = 1 - Math.abs(t - 2.38) / 0.38;
+    ctx.fillStyle = `rgba(255, 230, 180, ${flash * 0.38})`;
     ctx.beginPath();
-    ctx.arc(cx, (shipY + boostY) * 0.5, 40 + flash * 80, 0, Math.PI * 2);
+    ctx.arc(cx, (shipY + boostY) * 0.5, 50 + flash * 90, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.fillStyle = "rgba(255,255,255,0.74)";
   ctx.font = "600 13px Outfit, system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.letterSpacing = "0.28em";
   let caption = "SUPER HEAVY  ·  HOT STAGE";
-  if (t > 2.3 && t < 4.6) caption = "STAGE SEPARATION";
-  else if (t >= 4.6) caption = "BOOSTER RETURN  ·  STARSHIP CONTINUES";
+  if (t > 2.3 && t < 4.7) caption = "STAGE SEPARATION";
+  else if (t >= 4.7) caption = "BOOSTER RETURN  ·  STARSHIP CONTINUES";
   ctx.fillText(caption, w / 2, h - 36);
   ctx.font = "500 11px Outfit, system-ui, sans-serif";
   ctx.fillStyle = "rgba(255,255,255,0.38)";
@@ -775,6 +802,7 @@ export function createRenderer(canvas) {
       ctx.save();
       ctx.translate(sx, sy);
       bg(ctx, s, w, h);
+      if (s.phase === "intro") drawIntro(ctx, s, w, h);
       if (s.phase === "play" || s.phase === "boss") pips(ctx, s, w, h);
 
       for (const n of s.particles) {
