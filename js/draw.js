@@ -75,6 +75,9 @@ overmindImg.src = "img/overmind.jpg";
 const roadsterImg = new Image();
 roadsterImg.src = "img/roadster.png";
 
+const dogeImg = new Image();
+dogeImg.src = "img/doge.jpg";
+
 const shipRaw = new Image();
 let shipSprite = null;
 
@@ -120,124 +123,13 @@ function cropOpaque(src) {
   return c;
 }
 
-function opaquePoints(canvas) {
-  const w = canvas.width;
-  const h = canvas.height;
-  const p = canvas.getContext("2d").getImageData(0, 0, w, h).data;
-  const pts = [];
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (p[(y * w + x) * 4 + 3] > 28) pts.push(x, y);
-    }
-  }
-  return pts;
-}
-
-function buildShipSprite(raw) {
-  const keyed = cropOpaque(raw);
-  const pts = opaquePoints(keyed);
-  if (pts.length < 8) return { img: keyed, nx: -keyed.width * 0.45, ny: 0 };
-
-  let sx = 0;
-  let sy = 0;
-  const n = pts.length / 2;
-  for (let i = 0; i < pts.length; i += 2) {
-    sx += pts[i];
-    sy += pts[i + 1];
-  }
-  const cx = sx / n;
-  const cy = sy / n;
-  let sxx = 0;
-  let syy = 0;
-  let sxy = 0;
-  for (let i = 0; i < pts.length; i += 2) {
-    const dx = pts[i] - cx;
-    const dy = pts[i + 1] - cy;
-    sxx += dx * dx;
-    syy += dy * dy;
-    sxy += dx * dy;
-  }
-  let axis = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-
-  let minA = 1e9;
-  let maxA = -1e9;
-  for (let i = 0; i < pts.length; i += 2) {
-    const a = (pts[i] - cx) * Math.cos(axis) + (pts[i + 1] - cy) * Math.sin(axis);
-    if (a < minA) minA = a;
-    if (a > maxA) maxA = a;
-  }
-  const span = maxA - minA;
-  const band = Math.max(12, span * 0.06);
-
-  const widthAt = (along) => {
-    const tx = Math.cos(axis);
-    const ty = Math.sin(axis);
-    const px = -ty;
-    const py = tx;
-    let lo = 1e9;
-    let hi = -1e9;
-    for (let i = 0; i < pts.length; i += 2) {
-      const dx = pts[i] - cx;
-      const dy = pts[i + 1] - cy;
-      if (Math.abs(dx * tx + dy * ty - along) > band) continue;
-      const lat = dx * px + dy * py;
-      if (lat < lo) lo = lat;
-      if (lat > hi) hi = lat;
-    }
-    return hi - lo;
-  };
-
-  const wNose = widthAt(maxA - span * 0.14);
-  const wTail = widthAt(minA + span * 0.14);
-  if (wNose > wTail) axis += Math.PI;
-
-  const rot = -axis;
-  const diag = Math.ceil(Math.hypot(keyed.width, keyed.height));
-  const spun = document.createElement("canvas");
-  spun.width = diag;
-  spun.height = diag;
-  const sg = spun.getContext("2d");
-  sg.translate(diag / 2, diag / 2);
-  sg.rotate(rot);
-  sg.drawImage(keyed, -cx, -cy);
-  const aligned = cropOpaque(spun);
-
-  const ap = aligned.getContext("2d").getImageData(0, 0, aligned.width, aligned.height).data;
-  const aw = aligned.width;
-  const ah = aligned.height;
-  let left = aw;
-  for (let y = 0; y < ah; y++) {
-    for (let x = 0; x < aw; x++) {
-      if (ap[(y * aw + x) * 4 + 3] > 40 && x < left) left = x;
-    }
-  }
-  const band = Math.max(4, Math.round(aw * 0.06));
-  let ny = 0;
-  let nc = 0;
-  let nx = 0;
-  for (let y = 0; y < ah; y++) {
-    for (let x = left; x < Math.min(aw, left + band); x++) {
-      if (ap[(y * aw + x) * 4 + 3] > 40) {
-        nx += x;
-        ny += y;
-        nc += 1;
-      }
-    }
-  }
-  return {
-    img: aligned,
-    nx: (nc ? nx / nc : left) - aw / 2,
-    ny: (nc ? ny / nc : ah / 2) - ah / 2,
-  };
-}
-
 function keyStarship() {
   if (!shipRaw.naturalWidth || shipSprite) return;
   const src = document.createElement("canvas");
   src.width = shipRaw.naturalWidth;
   src.height = shipRaw.naturalHeight;
   src.getContext("2d").drawImage(shipRaw, 0, 0);
-  shipSprite = buildShipSprite(src);
+  shipSprite = cropOpaque(src);
 }
 shipRaw.onload = keyStarship;
 shipRaw.src = "img/starship.png";
@@ -472,18 +364,18 @@ function flame(ctx, t, on, scale = 22) {
 }
 
 export function drawStarship(ctx, size, t, thrusting) {
-  const spr = shipSprite;
-  if (spr && spr.img) {
-    const img = spr.img;
-    const hgt = size * 2.4;
-    const scale = hgt / img.height;
-    const wid = img.width * scale;
+  const img = shipSprite;
+  if (img && img.width) {
+    const hgt = size * 2.7;
+    const wid = hgt * (img.width / img.height);
     ctx.save();
+    // Sprite is vertical: nose up, nozzle down. Rotate so nose is +X.
+    ctx.rotate(Math.PI / 2);
     ctx.drawImage(img, -wid / 2, -hgt / 2, wid, hgt);
     if (thrusting) {
       ctx.save();
-      ctx.translate(spr.nx * scale, spr.ny * scale);
-      flame(ctx, t, true, Math.max(15, size * 0.9));
+      ctx.translate(-hgt * 0.47, 0);
+      flame(ctx, t, true, Math.max(16, size * 0.95));
       ctx.restore();
     }
     ctx.restore();
@@ -1071,6 +963,20 @@ export function createRenderer(canvas) {
           ctx.bezierCurveTo(-16, -4, -10, -16, 0, -8);
           ctx.bezierCurveTo(10, -16, 16, -4, 0, 9);
           ctx.fill();
+        } else if (o.kind === "doge") {
+          const sc = 1.08 + Math.sin(s.t * 8 + o.x) * 0.08;
+          ctx.scale(sc, sc);
+          ctx.shadowColor = "#f5d76e";
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(0, 0, 18, 0, Math.PI * 2);
+          ctx.clip();
+          if (dogeImg.complete && dogeImg.naturalWidth > 0) {
+            ctx.drawImage(dogeImg, -20, -20, 40, 40);
+          } else {
+            ctx.fillStyle = "#f2c57c";
+            ctx.fill();
+          }
         } else if (o.kind === "rapid" || o.kind === "nova" || o.kind === "titan" || o.kind === "boost" || o.kind === "cloak") {
           const sc = 1.05 + Math.sin(s.t * 9 + o.x) * 0.08;
           ctx.scale(sc, sc);

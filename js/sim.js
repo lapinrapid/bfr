@@ -137,6 +137,19 @@ export function startWave(s, i) {
   s.waveBanner = 1.8;
   s.spawnQ = s.compact ? thin(w.pack, 0.55) : w.pack.slice();
   s.spawnT = 0.35;
+  if (i === 1 && !s.dogeSpawned) {
+    s.dogeSpawned = true;
+    s.orbs.push({
+      x: s.w * 0.5,
+      y: s.h * 0.32,
+      vx: 40,
+      vy: -20,
+      t: 0,
+      worth: 200,
+      color: "#f5d76e",
+      kind: "doge",
+    });
+  }
 }
 
 function weaponFromMarks(m) {
@@ -1166,6 +1179,19 @@ export function step(s, dt, input) {
           s.boss.flash = 0.45;
           if (s.boss.hp <= 0) killBoss(s);
         }
+      } else if (o.kind === "doge") {
+        s.boostMul = Math.min(16, Math.max(4, s.boostMul * 4));
+        s.boostT = Math.max(s.boostT, 12);
+        s.overdrive = Math.max(s.overdrive, 10);
+        if (s.player.hp < 6) {
+          s.player.hp += 1;
+          if (s.player.hp > s.player.maxHp) s.player.maxHp = s.player.hp;
+        }
+        s.note = { name: "WOW", use: "such power  ·  so rocket", t: 2.6 };
+        addScore(s, o.x, o.y, 250);
+        burst(s, o.x, o.y, "#f5d76e", 16, 300);
+        ring(s, o.x, o.y, "#ffd36a");
+        s._sfx = "oneUp";
       } else if (o.kind === "cloak") {
         s.cloakT = 15;
         s.invuln = Math.max(s.invuln, 15);
