@@ -6,20 +6,20 @@ const BEST_KEY = "bfr-the-game-best";
 
 const $ = (id) => document.getElementById(id);
 
-function isTouch() {
-  return window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
-}
-
-function orientAngle() {
-  const a = window.screen?.orientation?.angle;
-  if (typeof a === "number") return a;
-  const o = window.orientation;
-  return typeof o === "number" ? o : 0;
+function isPhone() {
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  const noHover = window.matchMedia("(hover: none)").matches;
+  const small = window.innerWidth <= 900;
+  return coarse || noHover || small;
 }
 
 function deadzone(v, z = 0.12) {
   const n = Math.abs(v);
   return n < z ? 0 : Math.sign(v) * ((n - z) / (1 - z));
+}
+
+function buzz(ms) {
+  try { navigator.vibrate?.(ms); } catch { /* ignore */ }
 }
 
 function readBest() {
@@ -41,15 +41,12 @@ const state = freshState();
 const keys = {};
 const renderer = createRenderer(canvas);
 
-const touch = isTouch();
+let phone = isPhone();
 let firing = false;
 let hyperPulse = false;
 let galPulse = false;
 
-const tilt = { x: 0, y: 0, ready: false };
-const drag = { on: false, x: 0, y: 0, sx: 0, sy: 0 };
-let calib = null;
-let calibReset = false;
+const stick = { id: null, x: 0, y: 0, cx: 0, cy: 0 };
 const prev = { kills: 0, weapon: 1, hp: 4, phase: "title", wave: -1 };
 let hudClock = 0;
 
@@ -64,6 +61,21 @@ function showBest(el, score) {
 
 state.bg = "mars";
 
+function applyChrome() {
+  phone = isPhone();
+  document.documentElement.classList.toggle("is-phone", phone);
+  document.documentElement.classList.toggle("is-desk", !phone);
+  $("how-phone").hidden = !phone;
+  $("how-desk").hidden = phone;
+  $("btn-esc").textContent = phone ? "Menu" : "Esc";
+  syncPads();
+}
+
+function syncPads() {
+  const live = state.phase === "play" || state.phase === "boss";
+  $("pads").hidden = !(phone && live && !state.paused);
+}
+
 function setPhaseUI(phase) {
   $("title").hidden = phase !== "title";
   $("hud").hidden = phase !== "play" && phase !== "boss";
@@ -72,12 +84,15 @@ function setPhaseUI(phase) {
   $("win").hidden = phase !== "win";
   $("bossbar").hidden = phase !== "boss";
   if (phase !== "play" && phase !== "boss") $("menu").hidden = true;
+  syncPads();
 }
 
 function setPaused(on) {
   if (state.phase !== "play" && state.phase !== "boss") return;
   state.paused = on;
   $("menu").hidden = !on;
+  if (on) resetStick();
+  syncPads();
 }
 
 function paintHud() {
@@ -85,7 +100,10 @@ function paintHud() {
   $("wave-label").textContent = s.waveName || "The Belt";
   $("score").textContent = String(Math.floor(s.shown));
   $("weapon").textContent = WEAPONS[s.weapon - 1]?.name ?? "";
-  $("hyper-fill").style.width = `${Math.max(0, (1 - (s.player.galCd || 0) / 1.25) * 100)}%`;
+  const hyper = $("hyper-fill");
+  if (hyper) hyper.style.width = `${Math.max(0, (1 - (s.player.galCd || 0) / 1.25) * 100)}%`;
+  const dashBtn = $("btn-dash");
+  if (dashBtn) dashBtn.classList.toggle("is-cool", (s.player.galCd || 0) > 0.05);
 
   const hearts = $("hearts");
   hearts.innerHTML = "";
@@ -153,25 +171,15 @@ function paintHud() {
   $("win-score").textContent = String(Math.floor(s.score));
 }
 
-async function askTilt() {
-  if (!touch) return;
-  try {
-    const D = window.DeviceOrientationEvent;
-    if (typeof D?.requestPermission === "function") await D.requestPermission();
-  } catch { /* ignore */ }
-  calibReset = true;
-  tilt.ready = false;
-}
-
 function play() {
   unlockAudio();
-  askTilt();
   startRun(state, {
-    compact: touch,
+    compact: phone,
     bg: "mars",
     keepFlight: state.phase === "title",
   });
   firing = false;
+  resetStick();
   prev.kills = 0;
   prev.weapon = 1;
   prev.hp = 4;
@@ -228,65 +236,105 @@ function onKey(e) {
   }
 }
 
-function onOrient(e) {
-  if (!touch || e.beta == null || e.gamma == null) return;
-  if (calibReset || !calib) {
-    calib = { b: e.beta, g: e.gamma };
-    calibReset = false;
-    tilt.ready = true;
+function resetStick() {
+  stick.id = null;
+  stick.x = 0;
+  stick.y = 0;
+  const knob = $("stick-knob");
+  if (knob) knob.style.transform = "translate(0px, 0px)";
+}
+
+function moveStick(x, y) {
+  const max = 46;
+  let dx = x - stick.cx;
+  let dy = y - stick.cy;
+  const m = Math.hypot(dx, dy) || 1;
+  if (m > max) {
+    dx = (dx / m) * max;
+    dy = (dy / m) * max;
   }
-  let nx = (e.gamma - calib.g) / 22;
-  let ny = (e.beta - calib.b) / 22;
-  const ang = ((orientAngle() % 360) + 360) % 360;
-  if (ang === 90) {
-    const t = ny;
-    ny = -nx;
-    nx = t;
-  } else if (ang === 270) {
-    const t = -ny;
-    ny = nx;
-    nx = t;
-  } else if (ang === 180) {
-    nx = -nx;
-    ny = -ny;
-  }
-  nx = deadzone(Math.max(-1, Math.min(1, nx)));
-  ny = deadzone(Math.max(-1, Math.min(1, ny)));
-  tilt.x += (nx - tilt.x) * 0.28;
-  tilt.y += (ny - tilt.y) * 0.28;
-  tilt.ready = true;
+  stick.x = deadzone(dx / max, 0.08);
+  stick.y = deadzone(dy / max, 0.08);
+  $("stick-knob").style.transform = `translate(${dx}px, ${dy}px)`;
 }
 
 window.addEventListener("keydown", onKey);
 window.addEventListener("keyup", onKey);
-window.addEventListener("deviceorientation", onOrient);
-window.addEventListener("resize", () => renderer.resize());
+window.addEventListener("resize", () => {
+  renderer.resize();
+  applyChrome();
+});
 
-app.addEventListener("pointerdown", (e) => {
-  if (e.target.closest("a, button")) return;
+$("stick").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
   if (state.paused) return;
-  if (state.phase !== "play" && state.phase !== "boss" && state.phase !== "title") return;
-  firing = true;
-  if (touch) drag.on = true;
-  drag.sx = e.clientX;
-  drag.sy = e.clientY;
-  drag.x = 0;
-  drag.y = 0;
+  if (state.phase !== "play" && state.phase !== "boss") return;
+  stick.id = e.pointerId;
+  const r = e.currentTarget.getBoundingClientRect();
+  stick.cx = r.left + r.width / 2;
+  stick.cy = r.top + r.height / 2;
+  moveStick(e.clientX, e.clientY);
   try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 });
-app.addEventListener("pointermove", (e) => {
-  if (!drag.on) return;
-  drag.x = Math.max(-1, Math.min(1, (e.clientX - drag.sx) / 70));
-  drag.y = Math.max(-1, Math.min(1, (e.clientY - drag.sy) / 70));
+$("stick").addEventListener("pointermove", (e) => {
+  if (stick.id !== e.pointerId) return;
+  e.preventDefault();
+  moveStick(e.clientX, e.clientY);
 });
-const endPtr = () => {
-  firing = false;
-  drag.on = false;
-  drag.x = 0;
-  drag.y = 0;
+const endStick = (e) => {
+  if (stick.id !== e.pointerId) return;
+  resetStick();
 };
-app.addEventListener("pointerup", endPtr);
-app.addEventListener("pointercancel", endPtr);
+$("stick").addEventListener("pointerup", endStick);
+$("stick").addEventListener("pointercancel", endStick);
+
+$("btn-fire").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  firing = true;
+  e.currentTarget.classList.add("is-down");
+  unlockAudio();
+  try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+});
+const endFire = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  firing = false;
+  $("btn-fire").classList.remove("is-down");
+};
+$("btn-fire").addEventListener("pointerup", endFire);
+$("btn-fire").addEventListener("pointercancel", endFire);
+
+$("pads").addEventListener("contextmenu", (e) => e.preventDefault());
+document.addEventListener("touchmove", (e) => {
+  if (state.phase === "play" || state.phase === "boss") e.preventDefault();
+}, { passive: false });
+
+$("btn-dash").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (state.paused) return;
+  if (state.phase !== "play" && state.phase !== "boss") return;
+  if ((state.player.galCd || 0) <= 0) {
+    galPulse = true;
+    buzz(18);
+  }
+  unlockAudio();
+});
+
+app.addEventListener("pointerdown", (e) => {
+  if (e.target.closest("a, button, .xg-stick, .xg-pad")) return;
+  if (state.paused) return;
+  if (phone) return;
+  if (state.phase !== "play" && state.phase !== "boss" && state.phase !== "title") return;
+  firing = true;
+});
+const endDeskFire = () => {
+  if (!phone) firing = false;
+};
+app.addEventListener("pointerup", endDeskFire);
+app.addEventListener("pointercancel", endDeskFire);
 
 $("btn-play").addEventListener("pointerdown", (e) => { e.stopPropagation(); play(); });
 $("btn-esc").addEventListener("pointerdown", (e) => {
@@ -323,6 +371,7 @@ $("btn-win").addEventListener("pointerdown", (e) => {
 });
 
 renderer.resize();
+applyChrome();
 setPhaseUI("title");
 
 let last = performance.now();
@@ -337,22 +386,17 @@ function frame(now) {
   hyperPulse = false;
   const galactic = galPulse;
   galPulse = false;
-  const fireHeld = firing || (!touch && (keys[" "] || keys.space || keys.f || keys.j));
-  const useTilt = touch && tilt.ready;
-  const useDrag = touch && !useTilt && drag.on;
-  const stick = useTilt
-    ? { x: tilt.x, y: tilt.y }
-    : useDrag
-      ? { x: drag.x, y: drag.y }
-      : null;
+  const fireHeld = firing || !!(keys[" "] || keys.space || keys.f || keys.j);
+  const usingStick = stick.id != null && (Math.abs(stick.x) > 0.02 || Math.abs(stick.y) > 0.02);
+  const pad = usingStick ? { x: stick.x, y: stick.y } : null;
 
   step(state, dt, {
-    rotate: stick ? 0 : rotate,
-    thrust: stick ? false : thrust,
+    rotate: pad ? 0 : rotate,
+    thrust: pad ? false : thrust,
     hyper,
     galactic,
     fire: live && !state.paused && fireHeld,
-    tilt: stick,
+    tilt: pad,
   });
 
   if (state.kills > prev.kills) sfx.kill();
@@ -367,6 +411,7 @@ function frame(now) {
   if (state.phase === "dead" && prev.phase !== "dead") {
     sfx.dead();
     firing = false;
+    resetStick();
     showBest($("best-dead"), writeBest(state.score));
     setPhaseUI("dead");
   }

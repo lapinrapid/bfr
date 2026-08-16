@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/styles.css?v=phone1" />
 </head>
 <body>
   <div id="app" class="xg">
@@ -27,7 +27,18 @@
       <div class="xg-hyper" title="hyper"><i id="hyper-fill"></i></div>
     </div>
 
-    <button type="button" id="btn-esc" class="xg-esc" hidden>Esc</button>
+    <button type="button" id="btn-esc" class="xg-esc" hidden>Menu</button>
+
+    <div id="pads" class="xg-pads" hidden>
+      <div id="stick" class="xg-stick" role="application" aria-label="Fly">
+        <span class="xg-stick-well"></span>
+        <i id="stick-knob" class="xg-stick-knob"></i>
+      </div>
+      <div class="xg-actions">
+        <button type="button" id="btn-dash" class="xg-pad xg-pad-dash">Dash</button>
+        <button type="button" id="btn-fire" class="xg-pad xg-pad-fire">Fire</button>
+      </div>
+    </div>
 
     <div id="bossbar" class="xg-bossbar" hidden>
       <span>IMPACTOR</span>
@@ -52,13 +63,18 @@
     <div id="title" class="xg-overlay xg-title-screen">
       <div class="xg-title">STARSHIP</div>
       <div class="xg-kicker xg-occupy">MISSION: OCCUPY MARS</div>
-      <ul id="how" class="xg-keys">
+      <ul id="how-phone" class="xg-keys">
+        <li><b>Stick</b> Fly</li>
+        <li><b>Fire</b> Hold to shoot</li>
+        <li><b>Dash</b> Burst forward</li>
+        <li><b>Menu</b> Pause</li>
+      </ul>
+      <ul id="how-desk" class="xg-keys" hidden>
         <li><b>W</b> / <b>↑</b> Thrust</li>
         <li><b>A D</b> / <b>← →</b> Rotate</li>
-        <li><b>S</b> / <b>↓</b> Galactic dash</li>
+        <li><b>S</b> / <b>↓</b> Dash</li>
         <li><b>Space</b> Fire</li>
         <li><b>Esc</b> Menu</li>
-        <li><b>Enter</b> Launch</li>
       </ul>
       <button type="button" id="btn-play" class="xg-cta">Launch</button>
     </div>
@@ -88,6 +104,6 @@
       <button type="button" id="btn-exit" class="xg-cta xg-cta-ghost">Exit</button>
     </div>
   </div>
-  <script type="module" src="js/main.js?v=nozzle3"></script>
+  <script type="module" src="js/main.js?v=phone1"></script>
 </body>
 </html>
