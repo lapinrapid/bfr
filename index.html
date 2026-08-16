@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#030308" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BFR" />
+  <title>BFR · Big Fucking Rocket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app" class="xg">
+    <canvas id="game" class="xg-canvas"></canvas>
+
+    <div id="hud" class="xg-hud" hidden>
+      <div id="wave-label" class="xg-level">The Belt</div>
+      <div id="score" class="xg-score">0</div>
+      <div id="hearts" class="xg-hearts"></div>
+      <div id="weapon" class="xg-weapon">Pulse</div>
+      <div id="boost" class="xg-mod" hidden></div>
+      <div id="buffs"></div>
+      <div class="xg-hyper" title="hyper"><i id="hyper-fill"></i></div>
+    </div>
+
+    <div id="bossbar" class="xg-bossbar" hidden>
+      <span>IMPACTOR</span>
+      <b><i id="boss-fill"></i></b>
+    </div>
+
+    <div id="unlock" class="xg-unlock" hidden>
+      <small>weapon acquired</small>
+      <strong id="unlock-name"></strong>
+      <p id="unlock-use"></p>
+    </div>
+
+    <div id="note" class="xg-streak" hidden>
+      <strong id="note-name"></strong>
+      <p id="note-use"></p>
+    </div>
+
+    <div id="banner" class="xg-banner" hidden>
+      <strong id="banner-name"></strong>
+    </div>
+
+    <div id="title" class="xg-overlay xg-title-screen">
+      <div class="xg-kicker">OCCUPY MARS</div>
+      <div class="xg-title">BFR<span>BIG FUCKING ROCKET</span></div>
+      <div id="worlds" class="xg-worlds">
+        <button type="button" class="xg-world is-on" data-world="mars">Mars</button>
+        <button type="button" class="xg-world" data-world="earth">Earth</button>
+        <button type="button" class="xg-world" data-world="moon">Moon</button>
+      </div>
+      <ul id="how" class="xg-keys">
+        <li><b>W</b> / <b>↑</b> Thrust</li>
+        <li><b>A D</b> / <b>← →</b> Rotate</li>
+        <li><b>S</b> / <b>↓</b> Galactic dash</li>
+        <li><b>Space</b> Fire</li>
+        <li><b>Enter</b> Launch</li>
+      </ul>
+      <button type="button" id="btn-play" class="xg-cta">Launch</button>
+    </div>
+
+    <div id="dead" class="xg-overlay" hidden>
+      <div class="xg-kicker">hull lost</div>
+      <div id="dead-score" class="xg-over-score">0</div>
+      <div id="best-dead" class="xg-best" hidden></div>
+      <button type="button" id="btn-again" class="xg-cta">Again</button>
+      <button type="button" id="btn-gameover" class="xg-gameover" hidden>Game Over</button>
+    </div>
+
+    <div id="win" class="xg-overlay xg-win" hidden>
+      <img class="xg-elon" src="img/win.jpg" alt="" />
+      <div class="xg-win-copy">
+        <div class="xg-title">The skies are clear</div>
+        <div id="win-score" class="xg-over-score">0</div>
+        <div id="best-win" class="xg-best" hidden></div>
+        <button type="button" id="btn-win" class="xg-cta">Again</button>
+      </div>
+    </div>
+
+    <div id="pause" class="xg-pause" hidden>paused</div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
