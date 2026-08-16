@@ -10,6 +10,8 @@ Arena shooter — fly the BFR through asteroids, meteors, and shooting stars. Do
 
 Then open http://localhost:8088/
 
+**Live:** https://lapinrapid.github.io/bfr/
+
 ## Controls
 
 Fly around on the title screen with no enemies. Hit **Launch** (or Enter) when you want the belt to come at you.
