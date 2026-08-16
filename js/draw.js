@@ -129,6 +129,7 @@ function keyStarship() {
   src.width = shipRaw.naturalWidth;
   src.height = shipRaw.naturalHeight;
   src.getContext("2d").drawImage(shipRaw, 0, 0);
+  // Keep the PNG as-is: nose at the top, engine bell at the bottom.
   shipSprite = cropOpaque(src);
 }
 shipRaw.onload = keyStarship;
@@ -333,6 +334,7 @@ function drawReentry(ctx, t, remaining) {
   ctx.restore();
 }
 
+// Plume shoots +Y (down the PNG). Origin is the nozzle mouth.
 function flame(ctx, t, on, scale = 22) {
   if (!on) return;
   const flick = 0.84 + Math.sin(t * 51) * 0.1 + Math.sin(t * 89) * 0.06;
@@ -340,25 +342,25 @@ function flame(ctx, t, on, scale = 22) {
   const mouth = scale * 0.18;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  const glow = ctx.createLinearGradient(0, 0, -len, 0);
+  const glow = ctx.createLinearGradient(0, 0, 0, len);
   glow.addColorStop(0, "rgba(255, 230, 180, 0.85)");
   glow.addColorStop(0.18, "rgba(255, 170, 70, 0.7)");
   glow.addColorStop(0.55, "rgba(255, 80, 20, 0.28)");
   glow.addColorStop(1, "rgba(255, 40, 0, 0)");
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.moveTo(0, -mouth);
-  ctx.quadraticCurveTo(-len * 0.35, -mouth * 1.6 * flick, -len, 0);
-  ctx.quadraticCurveTo(-len * 0.35, mouth * 1.6 * flick, 0, mouth);
+  ctx.moveTo(-mouth, 0);
+  ctx.quadraticCurveTo(-mouth * 1.6 * flick, len * 0.35, 0, len);
+  ctx.quadraticCurveTo(mouth * 1.6 * flick, len * 0.35, mouth, 0);
   ctx.closePath();
   ctx.fill();
   ctx.fillStyle = `rgba(255,255,255,${0.55 * flick})`;
   ctx.beginPath();
-  ctx.ellipse(-len * 0.18, 0, len * 0.22, mouth * 0.45, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, len * 0.18, mouth * 0.45, len * 0.22, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = `rgba(180, 220, 255, ${0.4 * flick})`;
   ctx.beginPath();
-  ctx.ellipse(-mouth * 0.2, 0, mouth * 0.9, mouth * 0.38, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, mouth * 0.2, mouth * 0.38, mouth * 0.9, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -366,15 +368,19 @@ function flame(ctx, t, on, scale = 22) {
 export function drawStarship(ctx, size, t, thrusting) {
   const img = shipSprite;
   if (img && img.width) {
-    const hgt = size * 2.7;
-    const wid = hgt * (img.width / img.height);
+    // Photo is nose-up / nozzle-down. Heading 0 in the game is +X, so
+    // rotate the photo 90° clockwise. Flame is drawn in that same photo
+    // space at the bottom of the crop — ship and plume turn together.
+    const len = size * 2.7;
+    const sc = len / img.height;
+    const wid = img.width * sc;
+    const hgt = img.height * sc;
     ctx.save();
-    // Sprite is vertical: nose up, nozzle down. Rotate so nose is +X.
     ctx.rotate(Math.PI / 2);
     ctx.drawImage(img, -wid / 2, -hgt / 2, wid, hgt);
     if (thrusting) {
       ctx.save();
-      ctx.translate(-hgt * 0.47, 0);
+      ctx.translate(0, hgt * 0.5);
       flame(ctx, t, true, Math.max(16, size * 0.95));
       ctx.restore();
     }
@@ -498,7 +504,7 @@ export function drawStarship(ctx, size, t, thrusting) {
   if (thrusting) {
     ctx.save();
     ctx.translate(-L * 0.54, 0);
-    ctx.rotate(Math.PI);
+    ctx.rotate(-Math.PI / 2);
     flame(ctx, t, true, size);
     ctx.restore();
   }
