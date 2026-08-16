@@ -27,6 +27,8 @@
       <div class="xg-hyper" title="hyper"><i id="hyper-fill"></i></div>
     </div>
 
+    <button type="button" id="btn-esc" class="xg-esc" hidden>Esc</button>
+
     <div id="bossbar" class="xg-bossbar" hidden>
       <span>IMPACTOR</span>
       <b><i id="boss-fill"></i></b>
@@ -50,16 +52,12 @@
     <div id="title" class="xg-overlay xg-title-screen">
       <div class="xg-kicker">OCCUPY MARS</div>
       <div class="xg-title">BFR<span>BIG FUCKING ROCKET</span></div>
-      <div id="worlds" class="xg-worlds">
-        <button type="button" class="xg-world is-on" data-world="mars">Mars</button>
-        <button type="button" class="xg-world" data-world="earth">Earth</button>
-        <button type="button" class="xg-world" data-world="moon">Moon</button>
-      </div>
       <ul id="how" class="xg-keys">
         <li><b>W</b> / <b>↑</b> Thrust</li>
         <li><b>A D</b> / <b>← →</b> Rotate</li>
         <li><b>S</b> / <b>↓</b> Galactic dash</li>
         <li><b>Space</b> Fire</li>
+        <li><b>Esc</b> Menu</li>
         <li><b>Enter</b> Launch</li>
       </ul>
       <button type="button" id="btn-play" class="xg-cta">Launch</button>
@@ -83,7 +81,13 @@
       </div>
     </div>
 
-    <div id="pause" class="xg-pause" hidden>paused</div>
+    <div id="menu" class="xg-overlay xg-menu" hidden>
+      <div class="xg-kicker">paused</div>
+      <div class="xg-title xg-menu-title">ESCAPE</div>
+      <button type="button" id="btn-continue" class="xg-cta">Continue</button>
+      <button type="button" id="btn-restart" class="xg-cta xg-cta-ghost">Restart</button>
+      <button type="button" id="btn-exit" class="xg-cta xg-cta-ghost">Exit</button>
+    </div>
   </div>
   <script type="module" src="js/main.js"></script>
 </body>

@@ -72,8 +72,8 @@ const BOSS_PAL = { line: "rgba(255, 80, 200, 0.65)" };
 const overmindImg = new Image();
 overmindImg.src = "img/overmind.jpg";
 
-const dogeImg = new Image();
-dogeImg.src = "img/doge.jpg";
+const roadsterImg = new Image();
+roadsterImg.src = "img/roadster.png";
 
 function worldOf(s) {
   return WORLDS[s.bg] || WORLDS.mars;
@@ -205,23 +205,47 @@ function drawEnemy(ctx, e) {
   ctx.restore();
 }
 
-function drawDoge(ctx, size) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(0, 0, size * 0.92, 0, Math.PI * 2);
-  ctx.clip();
-  if (dogeImg.complete && dogeImg.naturalWidth > 0) {
-    ctx.drawImage(dogeImg, -size, -size, size * 2, size * 2);
+function drawRoadster(ctx, size) {
+  const s = size * 2.15;
+  if (roadsterImg.complete && roadsterImg.naturalWidth > 0) {
+    ctx.drawImage(roadsterImg, -s / 2, -s / 2, s, s);
   } else {
-    ctx.fillStyle = "#f2c57c";
+    ctx.fillStyle = "#e10600";
+    ctx.beginPath();
+    ctx.roundRect(-size, -size * 0.45, size * 2, size * 0.9, 6);
     ctx.fill();
   }
-  ctx.restore();
-  ctx.strokeStyle = "rgba(255, 220, 120, 0.55)";
-  ctx.lineWidth = 1.4;
+}
+
+function drawReentry(ctx, t, remaining) {
+  const warn = remaining < 3;
+  const flicker = 0.75 + Math.sin(t * 38) * 0.18 + Math.sin(t * 71) * 0.07;
+  ctx.save();
+  for (let i = 0; i < 7; i++) {
+    const u = i / 7;
+    ctx.globalAlpha = (0.1 + (1 - u) * 0.22) * flicker;
+    ctx.fillStyle = i < 2 ? "#fff6d8" : i < 4 ? "#ffb347" : "#ff4a14";
+    ctx.beginPath();
+    ctx.ellipse(-8 - i * 7, 0, 22 + i * 10, 10 + i * 3.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 0.28 + Math.sin(t * 22) * 0.1;
+  ctx.strokeStyle = warn ? "#fff" : "#ffb347";
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(0, 0, size * 0.92, 0, Math.PI * 2);
+  ctx.ellipse(2, 0, 28 + Math.sin(t * 16) * 3, 18 + Math.sin(t * 13) * 2, 0, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.globalAlpha = 0.45;
+  ctx.strokeStyle = "rgba(255, 140, 40, 0.7)";
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 8; i++) {
+    const a = t * 9 + i * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 16, Math.sin(a) * 10);
+    ctx.lineTo(Math.cos(a) * (30 + Math.sin(t * 20 + i) * 6), Math.sin(a) * (18 + Math.sin(t * 17 + i) * 4));
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function flame(ctx, t, on) {
@@ -751,7 +775,6 @@ export function createRenderer(canvas) {
       ctx.save();
       ctx.translate(sx, sy);
       bg(ctx, s, w, h);
-      if (s.phase === "intro") drawIntro(ctx, s, w, h);
       if (s.phase === "play" || s.phase === "boss") pips(ctx, s, w, h);
 
       for (const n of s.particles) {
@@ -826,13 +849,21 @@ export function createRenderer(canvas) {
           ctx.bezierCurveTo(-16, -4, -10, -16, 0, -8);
           ctx.bezierCurveTo(10, -16, 16, -4, 0, 9);
           ctx.fill();
-        } else if (o.kind === "rapid" || o.kind === "nova" || o.kind === "titan" || o.kind === "boost") {
+        } else if (o.kind === "rapid" || o.kind === "nova" || o.kind === "titan" || o.kind === "boost" || o.kind === "cloak") {
           const sc = 1.05 + Math.sin(s.t * 9 + o.x) * 0.08;
           ctx.scale(sc, sc);
-          ctx.shadowColor = "#f5d76e";
+          ctx.shadowColor = o.kind === "cloak" ? "#ff8a3d" : "#7ec8ff";
           ctx.shadowBlur = 18;
-          ctx.rotate(s.t * 1.4);
-          drawDoge(ctx, 17);
+          ctx.rotate(s.t * 0.9);
+          drawRoadster(ctx, 15);
+          if (o.kind === "cloak") {
+            ctx.rotate(-s.t * 0.9);
+            ctx.strokeStyle = `rgba(255,140,40,${0.45 + Math.sin(s.t * 12) * 0.2})`;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.arc(0, 0, 20 + Math.sin(s.t * 10) * 2, 0, Math.PI * 2);
+            ctx.stroke();
+          }
         } else {
           ctx.globalAlpha = 0.16;
           ctx.shadowColor = o.color;
@@ -992,6 +1023,7 @@ export function createRenderer(canvas) {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.angle);
+        if ((s.cloakT || 0) > 0) drawReentry(ctx, s.t, s.cloakT);
         flame(ctx, s.t, p.thrusting);
         if (p.charging && s.weapon === 3) {
           const u = Math.min(1, p.charge / 0.12);
@@ -1015,10 +1047,11 @@ export function createRenderer(canvas) {
           ctx.closePath();
           ctx.fill();
         }
-        ctx.shadowColor = "#fff";
-        ctx.shadowBlur = p.thrusting || p.charging || p.muzzle > 0 ? 22 : p.iFrames > 0 ? 16 : 14;
-        ctx.globalAlpha = p.iFrames > 0 ? 0.62 + Math.sin(s.t * 7) * 0.18 : 1;
-        drawStarship(ctx, s.phase === "title" ? 32 : 24, s.t, p.thrusting || p.galT > 0);
+        ctx.shadowColor = (s.cloakT || 0) > 0 ? "#ff8a3d" : "#fff";
+        ctx.shadowBlur = (s.cloakT || 0) > 0 ? 28 : p.thrusting || p.charging || p.muzzle > 0 ? 22 : p.iFrames > 0 ? 16 : 14;
+        if ((s.cloakT || 0) > 0) ctx.globalAlpha = 0.18 + Math.sin(s.t * 14) * 0.08;
+        else ctx.globalAlpha = p.iFrames > 0 ? 0.62 + Math.sin(s.t * 7) * 0.18 : 1;
+        drawStarship(ctx, s.phase === "title" ? 32 : 24, s.t, p.thrusting || p.galT > 0 || (s.cloakT || 0) > 0);
         ctx.restore();
         ghosts(ctx, s);
       }

@@ -1,6 +1,6 @@
 # BFR — Big Fucking Rocket
 
-Arena shooter — fly the BFR through asteroids, meteors, and shooting stars. Doge pickups. Super Heavy hot-stage intro. Occupy Mars.
+Arena shooter — fly the BFR through asteroids, meteors, and shooting stars over Mars. Starman Roadster pickups. Occupy Mars.
 
 ## Play
 
@@ -23,8 +23,8 @@ Fly around on the title screen with no enemies. Hit **Launch** (or Enter) when y
 | `S` / `↓` | Galactic dash — instant forward boost |
 | `Space` / `F` / `J` | Fire (hold) |
 | `Shift` / `X` | Hyper teleport |
+| `Esc` | Menu — continue, restart, exit |
 | `Enter` | Launch (start waves) |
-| `P` | Pause |
 | Phone | Tilt to fly, hold to fire |
 
 The arena wraps. Lead shots. Dash out of a swarm.

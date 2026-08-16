@@ -268,11 +268,11 @@ html, body {
 }
 
 .xg-bossbar {
-  top: calc(58px + var(--safe-t));
-  z-index: 4;
+  top: calc(14px + var(--safe-t));
+  z-index: 5;
   pointer-events: none;
   text-align: center;
-  width: min(380px, 100vw - 220px);
+  width: min(520px, calc(100vw - 48px));
   position: absolute;
   left: 50%;
   transform: translate(-50%);
@@ -281,25 +281,65 @@ html, body {
 .xg-bossbar span {
   letter-spacing: .36em;
   text-transform: uppercase;
-  color: #8a8a8a;
+  color: #ffb4b4;
   margin-bottom: 6px;
-  font-size: 10px;
+  font-size: 11px;
   display: block;
 }
 
 .xg-bossbar b {
   background: #ffffff14;
   border-radius: 99px;
-  height: 4px;
+  height: 8px;
   display: block;
   overflow: hidden;
+  box-shadow: 0 0 16px #ff2a2a33;
 }
 
 .xg-bossbar i {
-  background: #39ff8a;
+  background: linear-gradient(90deg, #7a0000, #ff2a2a 55%, #ff6a6a);
   height: 100%;
   display: block;
 }
+
+.xg-esc {
+  z-index: 6;
+  pointer-events: auto;
+  color: #ddd;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: #ffffff12;
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 11px;
+  position: absolute;
+  top: calc(14px + var(--safe-t));
+  right: 16px;
+}
+
+.xg-esc:hover { background: #ffffff22; }
+
+.xg-menu {
+  z-index: 10;
+  pointer-events: auto;
+  background: linear-gradient(#0000 8%, #050506cc 46%, #050506f0);
+  justify-content: flex-end;
+}
+
+.xg-menu-title {
+  font-size: clamp(42px, 10vw, 72px);
+}
+
+.xg-cta-ghost {
+  color: #eee;
+  background: #ffffff14;
+  margin-top: 12px;
+}
+
+.xg-cta-ghost:hover { background: #ffffff22; }
 
 .xg-overlay {
   z-index: 6;

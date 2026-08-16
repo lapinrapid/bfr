@@ -22,20 +22,6 @@ export const WORLDS = {
     haze: "rgba(180, 70, 30, 0.22)",
     speed: 11,
   },
-  earth: {
-    name: "Earth",
-    src: "img/bg-earth.jpg",
-    line: "rgba(120, 200, 255, 0.55)",
-    haze: "rgba(30, 80, 180, 0.18)",
-    speed: 10,
-  },
-  moon: {
-    name: "Moon",
-    src: "img/bg-moon.jpg",
-    line: "rgba(220, 220, 230, 0.5)",
-    haze: "rgba(20, 20, 24, 0.18)",
-    speed: 13,
-  },
 };
 
 export const WAVES = [
@@ -100,12 +86,12 @@ export function freshState() {
     boostT: 0,
     boostMul: 1,
     overdrive: 0,
+    cloakT: 0,
     buffs: { rapid: 0, nova: 0, titan: 0 },
     note: null,
     compact: false,
     paused: false,
     bg: "mars",
-    intro: 0,
   };
 }
 
@@ -128,13 +114,19 @@ export function startRun(s, opts) {
     angle: s.player.angle, galCd: s.player.galCd, galT: s.player.galT,
     dashCd: s.player.dashCd,
   } : null;
-  Object.assign(s, freshState(), { w, h, phase: "intro", compact, bg, _placed: true, intro: 0 });
+  Object.assign(s, freshState(), { w, h, phase: "play", compact, bg: "mars", _placed: true });
   if (keep) {
     Object.assign(s.player, keep);
   } else {
     s.player.x = w / 2;
     s.player.y = h * 0.62;
   }
+  startWave(s, 0);
+}
+
+export function goTitle(s) {
+  const { w, h } = s;
+  Object.assign(s, freshState(), { w, h, phase: "title", bg: "mars" });
 }
 
 export function startWave(s, i) {
@@ -525,6 +517,7 @@ function killEnemy(s, e) {
   drop("score", 20, KIND_COLOR[e.kind]);
   if (e.split && Math.random() < 0.1) drop("heart", 0, "#ff4d6d");
   if (e.split && Math.random() < 0.03) drop("boost", 0, "#f5d76e");
+  if (e.split && Math.random() < 0.025) drop("cloak", 0, "#ff8a3d");
   if (e.split && Math.random() < 0.2) {
     const kinds = ["rapid", "nova", "titan"];
     const k = kinds[Math.floor(Math.random() * kinds.length)];
@@ -550,7 +543,7 @@ function killEnemy(s, e) {
 }
 
 function hurt(s) {
-  if (s.player.iFrames > 0 || s.invuln > 0) return;
+  if (s.player.iFrames > 0 || s.invuln > 0 || (s.cloakT || 0) > 0) return;
   s.player.hp -= 1;
   s.player.iFrames = 1.05;
   s.combo = 0;
@@ -951,6 +944,19 @@ function tickFlight(s, raw, input) {
     }
   }
 
+  if ((s.cloakT || 0) > 0 && s.particles.length < 120) {
+    s.particles.push({
+      x: p.x - Math.cos(p.angle) * (10 + Math.random() * 18),
+      y: p.y - Math.sin(p.angle) * (10 + Math.random() * 18),
+      vx: -Math.cos(p.angle) * (80 + Math.random() * 120) + (Math.random() - 0.5) * 60,
+      vy: -Math.sin(p.angle) * (80 + Math.random() * 120) + (Math.random() - 0.5) * 60,
+      life: 0.22 + Math.random() * 0.18, max: 0.4,
+      size: 3 + Math.random() * 5,
+      color: Math.random() > 0.45 ? "#ff8a3d" : "#fff4c4",
+      kind: "streak",
+    });
+  }
+
   if ((p.thrusting || p.galT > 0) && s.particles.length < 90) {
     s.particles.push({
       x: p.x - Math.cos(p.angle) * 22,
@@ -1035,23 +1041,8 @@ function tickLoose(s, raw) {
   s.beams = s.beams.filter((b) => b.life > 0);
 }
 
-export function finishIntro(s) {
-  s.phase = "play";
-  s.intro = 99;
-  startWave(s, 0);
-}
-
 export function step(s, dt, input) {
   const raw = Math.min(0.033, dt);
-  if (s.phase === "intro") {
-    s.t += raw;
-    s.intro = (s.intro || 0) + raw;
-    s.shake = Math.max(0, s.shake - raw * 18);
-    if (s.intro > 2.15 && s.intro < 2.5) s.shake = Math.max(s.shake, 10);
-    if (s.intro > 7.6 || input.skip) finishIntro(s);
-    tickLoose(s, raw);
-    return;
-  }
   if (s.phase === "title") {
     s.t += raw;
     s.shake = Math.max(0, s.shake - raw * 28);
@@ -1068,6 +1059,7 @@ export function step(s, dt, input) {
   s.invuln = Math.max(0, s.invuln - raw);
   s.boostT = Math.max(0, s.boostT - raw);
   if (s.boostT <= 0) s.boostMul = 1;
+  s.cloakT = Math.max(0, (s.cloakT || 0) - raw);
   s.overdrive = Math.max(0, s.overdrive - raw);
   if (s.unlock) { s.unlock.t -= raw; if (s.unlock.t <= 0) s.unlock = null; }
   if (s.note) { s.note.t -= raw; if (s.note.t <= 0) s.note = null; }
@@ -1173,6 +1165,14 @@ export function step(s, dt, input) {
           s.boss.flash = 0.45;
           if (s.boss.hp <= 0) killBoss(s);
         }
+      } else if (o.kind === "cloak") {
+        s.cloakT = 15;
+        s.invuln = Math.max(s.invuln, 15);
+        s.note = { name: "Reentry", use: "ghost burn · 15s", t: 2.4 };
+        addScore(s, o.x, o.y, 80);
+        burst(s, o.x, o.y, "#ff8a3d", 14, 280);
+        ring(s, o.x, o.y, "#ffb347");
+        s._sfx = "zap";
       } else if (o.kind === "rapid" || o.kind === "nova" || o.kind === "titan") {
         pickupPower(s, o.kind);
         addScore(s, o.x, o.y, 50);

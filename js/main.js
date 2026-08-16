@@ -1,9 +1,8 @@
 import { sfx, unlockAudio } from "./audio.js";
-import { freshState, startRun, step, finishIntro, WEAPONS, POWERS } from "./sim.js";
+import { freshState, startRun, step, goTitle, WEAPONS, POWERS } from "./sim.js";
 import { createRenderer } from "./draw.js";
 
 const BEST_KEY = "bfr-the-game-best";
-const BG_KEY = "bfr-the-game-bg";
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,19 +24,6 @@ function deadzone(v, z = 0.12) {
 
 function readBest() {
   return Number(localStorage.getItem(BEST_KEY) || localStorage.getItem("starship-the-game-best") || 0);
-}
-
-function readBg() {
-  const v = localStorage.getItem(BG_KEY);
-  return v === "earth" || v === "moon" || v === "mars" ? v : "mars";
-}
-
-function writeBg(id) {
-  localStorage.setItem(BG_KEY, id);
-  state.bg = id;
-  for (const btn of document.querySelectorAll(".xg-world")) {
-    btn.classList.toggle("is-on", btn.dataset.world === id);
-  }
 }
 
 function writeBest(score) {
@@ -76,20 +62,27 @@ function showBest(el, score) {
   }
 }
 
-state.bg = readBg();
-writeBg(state.bg);
+state.bg = "mars";
 
 function setPhaseUI(phase) {
   $("title").hidden = phase !== "title";
   $("hud").hidden = phase !== "play" && phase !== "boss";
+  $("btn-esc").hidden = phase !== "play" && phase !== "boss";
   $("dead").hidden = phase !== "dead";
   $("win").hidden = phase !== "win";
   $("bossbar").hidden = phase !== "boss";
+  if (phase !== "play" && phase !== "boss") $("menu").hidden = true;
   if (phase !== "dead") {
     $("btn-again").hidden = false;
     $("btn-gameover").hidden = true;
     wantGameOver = false;
   }
+}
+
+function setPaused(on) {
+  if (state.phase !== "play" && state.phase !== "boss") return;
+  state.paused = on;
+  $("menu").hidden = !on;
 }
 
 function paintHud() {
@@ -107,9 +100,12 @@ function paintHud() {
     hearts.appendChild(el);
   }
 
-  if (s.boostT > 0) {
+  if (s.boostT > 0 || (s.cloakT || 0) > 0) {
     $("boost").hidden = false;
-    $("boost").textContent = `${s.boostMul}x ${s.boostT.toFixed(0)}s`;
+    const bits = [];
+    if (s.boostT > 0) bits.push(`${s.boostMul}x ${s.boostT.toFixed(0)}s`);
+    if ((s.cloakT || 0) > 0) bits.push(`reentry ${s.cloakT.toFixed(0)}s`);
+    $("boost").textContent = bits.join(" · ");
   } else {
     $("boost").hidden = true;
   }
@@ -158,7 +154,6 @@ function paintHud() {
     $("banner").hidden = true;
   }
 
-  $("pause").hidden = !(s.paused && (s.phase === "play" || s.phase === "boss"));
   $("dead-score").textContent = String(Math.floor(s.score));
   $("win-score").textContent = String(Math.floor(s.score));
 }
@@ -178,7 +173,7 @@ function play() {
   askTilt();
   startRun(state, {
     compact: touch,
-    bg: state.bg || readBg(),
+    bg: "mars",
     keepFlight: state.phase === "title",
   });
   firing = false;
@@ -186,9 +181,11 @@ function play() {
   prev.kills = 0;
   prev.weapon = 1;
   prev.hp = 4;
-  prev.phase = "intro";
-  prev.wave = -1;
-  setPhaseUI("intro");
+  prev.phase = "play";
+  prev.wave = 0;
+  setPaused(false);
+  setPhaseUI("play");
+  paintHud();
 }
 
 function onKey(e) {
@@ -207,21 +204,14 @@ function onKey(e) {
     }
     return;
   }
-  if (phase === "intro" && (e.code === "Enter" || e.code === "Space" || k === "r")) {
-    e.preventDefault();
-    finishIntro(state);
-    setPhaseUI("play");
-    paintHud();
-    return;
-  }
   if (phase === "title" && (e.code === "Enter" || k === "r")) {
     e.preventDefault();
     play();
     return;
   }
-  if (live && k === "p") {
+  if (live && (k === "p" || e.code === "Escape")) {
     e.preventDefault();
-    state.paused = !state.paused;
+    setPaused(!state.paused);
     return;
   }
   if (flying && (e.code === "Space" || k === "f" || k === "j")) {
@@ -280,12 +270,7 @@ window.addEventListener("resize", () => renderer.resize());
 
 app.addEventListener("pointerdown", (e) => {
   if (e.target.closest("a, button")) return;
-  if (state.phase === "intro") {
-    finishIntro(state);
-    setPhaseUI("play");
-    paintHud();
-    return;
-  }
+  if (state.paused) return;
   if (state.phase !== "play" && state.phase !== "boss" && state.phase !== "title") return;
   firing = true;
   if (touch) drag.on = true;
@@ -309,13 +294,29 @@ const endPtr = () => {
 app.addEventListener("pointerup", endPtr);
 app.addEventListener("pointercancel", endPtr);
 
-$("worlds").addEventListener("pointerdown", (e) => {
-  e.stopPropagation();
-  const btn = e.target.closest("[data-world]");
-  if (!btn) return;
-  writeBg(btn.dataset.world);
-});
 $("btn-play").addEventListener("pointerdown", (e) => { e.stopPropagation(); play(); });
+$("btn-esc").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setPaused(!state.paused);
+});
+$("btn-continue").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setPaused(false);
+});
+$("btn-restart").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  play();
+});
+$("btn-exit").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  goTitle(state);
+  setPaused(false);
+  setPhaseUI("title");
+});
 $("btn-again").addEventListener("pointerdown", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -370,10 +371,6 @@ function frame(now) {
   if (state.kills > prev.kills) sfx.kill();
   if (state.weapon > prev.weapon) sfx.level();
   if (state.player.hp < prev.hp) sfx.hurt();
-  if (state.phase === "play" && prev.phase === "intro") {
-    setPhaseUI("play");
-    paintHud();
-  }
   if (state.phase === "boss" && prev.phase !== "boss") sfx.boss();
   if (state.phase === "win" && prev.phase !== "win") {
     sfx.win();
