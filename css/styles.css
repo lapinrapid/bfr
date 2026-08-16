@@ -361,14 +361,14 @@ html, body {
 
 .xg-elon {
   object-fit: cover;
-  object-position: center top;
+  object-position: center;
   pointer-events: none;
-  filter: contrast(.96) saturate(.92);
+  filter: contrast(.98) saturate(1);
   width: auto;
-  max-width: min(340px, 72vw);
-  height: min(58vh, 520px);
+  max-width: min(420px, 82vw);
+  height: min(62vh, 560px);
   position: absolute;
-  top: 7%;
+  top: 5%;
   left: 50%;
   transform: translate(-50%);
   border-radius: 4px;

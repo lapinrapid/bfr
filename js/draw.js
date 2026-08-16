@@ -75,6 +75,56 @@ overmindImg.src = "img/overmind.jpg";
 const roadsterImg = new Image();
 roadsterImg.src = "img/roadster.png";
 
+const shipRaw = new Image();
+let shipKeyed = null;
+function keyStarship() {
+  if (!shipRaw.naturalWidth || shipKeyed) return;
+  const src = document.createElement("canvas");
+  src.width = shipRaw.naturalWidth;
+  src.height = shipRaw.naturalHeight;
+  const g = src.getContext("2d");
+  g.drawImage(shipRaw, 0, 0);
+  const data = g.getImageData(0, 0, src.width, src.height);
+  const p = data.data;
+  let minX = src.width;
+  let minY = src.height;
+  let maxX = 0;
+  let maxY = 0;
+  for (let y = 0; y < src.height; y++) {
+    for (let x = 0; x < src.width; x++) {
+      const i = (y * src.width + x) * 4;
+      const r = p[i];
+      const gv = p[i + 1];
+      const b = p[i + 2];
+      if (r > 236 && gv > 236 && b > 236) {
+        p[i + 3] = 0;
+        continue;
+      }
+      if (r > 210 && gv > 210 && b > 210) p[i + 3] = Math.max(0, 255 - (r + gv + b - 630));
+      if (p[i + 3] > 24) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  g.putImageData(data, 0, 0);
+  const pad = 4;
+  minX = Math.max(0, minX - pad);
+  minY = Math.max(0, minY - pad);
+  maxX = Math.min(src.width - 1, maxX + pad);
+  maxY = Math.min(src.height - 1, maxY + pad);
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, maxX - minX + 1);
+  c.height = Math.max(1, maxY - minY + 1);
+  c.getContext("2d").drawImage(src, minX, minY, c.width, c.height, 0, 0, c.width, c.height);
+  shipKeyed = c;
+}
+shipRaw.onload = keyStarship;
+shipRaw.src = "img/starship.png";
+if (shipRaw.complete) keyStarship();
+
 const shRaw = new Image();
 let shKeyed = null;
 function keySuperheavy() {
@@ -293,6 +343,25 @@ function flame(ctx, t, on) {
 }
 
 export function drawStarship(ctx, size, t, thrusting) {
+  const img = shipKeyed && shipKeyed.width ? shipKeyed : null;
+  if (img) {
+    const hgt = size * 2.55;
+    const wid = hgt * (img.width / img.height);
+    ctx.save();
+    // Photo points nose up-right; rotate so nose is +X like the rest of the game.
+    ctx.rotate(Math.PI / 4);
+    if (thrusting) {
+      ctx.save();
+      ctx.translate(-wid * 0.28, wid * 0.28);
+      ctx.rotate((-3 * Math.PI) / 4);
+      flame(ctx, t, true);
+      ctx.restore();
+    }
+    ctx.drawImage(img, -wid * 0.5, -hgt * 0.5, wid, hgt);
+    ctx.restore();
+    return;
+  }
+
   const L = size * 1.55;
   const W = size * 0.22;
 
