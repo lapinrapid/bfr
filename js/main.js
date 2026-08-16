@@ -1,5 +1,5 @@
 import { sfx, unlockAudio } from "./audio.js";
-import { freshState, startRun, step, goTitle, finishIntro, WEAPONS, POWERS } from "./sim.js";
+import { freshState, startRun, step, goTitle, WEAPONS, POWERS } from "./sim.js";
 import { createRenderer } from "./draw.js";
 
 const BEST_KEY = "bfr-the-game-best";
@@ -181,10 +181,11 @@ function play() {
   prev.kills = 0;
   prev.weapon = 1;
   prev.hp = 4;
-  prev.phase = "intro";
-  prev.wave = -1;
+  prev.phase = "play";
+  prev.wave = 0;
   setPaused(false);
-  setPhaseUI("intro");
+  setPhaseUI("play");
+  paintHud();
 }
 
 function onKey(e) {
@@ -201,13 +202,6 @@ function onKey(e) {
     if (e.code === "Space" || e.code === "Enter" || e.code.startsWith("Arrow") || k === "r") {
       e.preventDefault();
     }
-    return;
-  }
-  if (phase === "intro" && (e.code === "Enter" || e.code === "Space" || k === "r")) {
-    e.preventDefault();
-    finishIntro(state);
-    setPhaseUI("play");
-    paintHud();
     return;
   }
   if (phase === "title" && (e.code === "Enter" || k === "r")) {
@@ -276,12 +270,6 @@ window.addEventListener("resize", () => renderer.resize());
 
 app.addEventListener("pointerdown", (e) => {
   if (e.target.closest("a, button")) return;
-  if (state.phase === "intro") {
-    finishIntro(state);
-    setPhaseUI("play");
-    paintHud();
-    return;
-  }
   if (state.paused) return;
   if (state.phase !== "play" && state.phase !== "boss" && state.phase !== "title") return;
   firing = true;
@@ -383,10 +371,6 @@ function frame(now) {
   if (state.kills > prev.kills) sfx.kill();
   if (state.weapon > prev.weapon) sfx.level();
   if (state.player.hp < prev.hp) sfx.hurt();
-  if (state.phase === "play" && prev.phase === "intro") {
-    setPhaseUI("play");
-    paintHud();
-  }
   if (state.phase === "boss" && prev.phase !== "boss") sfx.boss();
   if (state.phase === "win" && prev.phase !== "win") {
     sfx.win();

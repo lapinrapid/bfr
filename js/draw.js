@@ -323,23 +323,58 @@ function drawReentry(ctx, t, remaining) {
   ctx.restore();
 }
 
-function flame(ctx, t, on) {
-  const pow = on ? 1 : 0.42;
-  const flicker = 0.82 + Math.sin(t * 31) * 0.1 + Math.sin(t * 53) * 0.07;
-  for (let i = 0; i < 6; i++) {
-    const len = (20 + i * 10) * pow * flicker + Math.sin(t * 26 + i * 1.3) * 5 * pow;
-    const w = (6.5 - i * 0.7) * pow;
-    const wob = Math.sin(t * 23 + i * 1.6) * 2.6 * pow;
-    ctx.globalAlpha = (0.16 + (1 - i / 6) * 0.32) * (on ? 1 : 0.55);
-    ctx.fillStyle = i < 2 ? "#fff4c4" : i < 4 ? "#ffb347" : "#ff4a14";
+function flame(ctx, t, on, scale = 22) {
+  if (!on) return;
+  const flick = 0.82 + Math.sin(t * 47) * 0.12 + Math.sin(t * 83) * 0.07;
+  const len = scale * (1.35 + flick * 0.55);
+  const mouth = scale * 0.22;
+
+  ctx.save();
+  // outer glow
+  const glow = ctx.createRadialGradient(0, 0, mouth, len * 0.45, 0, len);
+  glow.addColorStop(0, "rgba(255, 170, 60, 0.35)");
+  glow.addColorStop(0.55, "rgba(255, 80, 20, 0.12)");
+  glow.addColorStop(1, "rgba(255, 40, 0, 0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.ellipse(len * 0.38, 0, len * 0.62, scale * 0.42, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // expanding cone from the bell
+  for (let i = 0; i < 5; i++) {
+    const u = i / 5;
+    const wob = Math.sin(t * 29 + i * 1.7) * scale * 0.08;
+    const tip = len * (0.55 + u * 0.5) * flick;
+    const half = mouth * (1 + u * 2.4);
+    ctx.globalAlpha = (0.55 - u * 0.42) * flick;
+    ctx.fillStyle = i < 1 ? "#fff8e0" : i < 3 ? "#ffb347" : "#ff4a14";
     ctx.beginPath();
-    ctx.moveTo(-18, -w);
-    ctx.quadraticCurveTo(-18 - len * 0.5, wob, -20 - len, wob * 0.25);
-    ctx.quadraticCurveTo(-18 - len * 0.5, -wob, -18, w);
+    ctx.moveTo(0, -mouth * 0.7);
+    ctx.quadraticCurveTo(tip * 0.4, wob - half * 0.35, tip, wob * 0.2);
+    ctx.quadraticCurveTo(tip * 0.4, wob + half * 0.35, 0, mouth * 0.7);
     ctx.closePath();
     ctx.fill();
   }
+
+  // Mach-diamond core
+  ctx.globalAlpha = 0.85 * flick;
+  const core = ctx.createLinearGradient(0, 0, len * 0.7, 0);
+  core.addColorStop(0, "rgba(200, 230, 255, 0.95)");
+  core.addColorStop(0.22, "rgba(255, 255, 240, 0.9)");
+  core.addColorStop(0.7, "rgba(255, 180, 70, 0.25)");
+  core.addColorStop(1, "rgba(255, 80, 20, 0)");
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.ellipse(len * 0.22, 0, len * 0.32, mouth * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.ellipse(mouth * 0.4, 0, mouth * 0.7, mouth * 0.35, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 export function drawStarship(ctx, size, t, thrusting) {
@@ -350,14 +385,14 @@ export function drawStarship(ctx, size, t, thrusting) {
     ctx.save();
     // Photo points nose up-right; rotate so nose is +X like the rest of the game.
     ctx.rotate(Math.PI / 4);
+    ctx.drawImage(img, -wid * 0.5, -hgt * 0.5, wid, hgt);
     if (thrusting) {
       ctx.save();
-      ctx.translate(-wid * 0.28, wid * 0.28);
-      ctx.rotate((-3 * Math.PI) / 4);
-      flame(ctx, t, true);
+      ctx.translate(-wid * 0.34, hgt * 0.08);
+      ctx.rotate(Math.PI);
+      flame(ctx, t, true, Math.max(14, size * 0.85));
       ctx.restore();
     }
-    ctx.drawImage(img, -wid * 0.5, -hgt * 0.5, wid, hgt);
     ctx.restore();
     return;
   }
@@ -476,13 +511,11 @@ export function drawStarship(ctx, size, t, thrusting) {
     ctx.fill();
   }
   if (thrusting) {
-    flame(ctx, t, true);
-    for (const oy of bells) {
-      ctx.fillStyle = `rgba(255, 200, 120, ${0.5 + Math.sin(t * 42 + oy * 8) * 0.25})`;
-      ctx.beginPath();
-      ctx.ellipse(-L * 0.56, oy * 0.7, size * 0.04, size * 0.024, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.save();
+    ctx.translate(-L * 0.54, 0);
+    ctx.rotate(Math.PI);
+    flame(ctx, t, true, size);
+    ctx.restore();
   }
 
   ctx.restore();
@@ -871,7 +904,6 @@ export function createRenderer(canvas) {
       ctx.save();
       ctx.translate(sx, sy);
       bg(ctx, s, w, h);
-      if (s.phase === "intro") drawIntro(ctx, s, w, h);
       if (s.phase === "play" || s.phase === "boss") pips(ctx, s, w, h);
 
       for (const n of s.particles) {
@@ -1121,7 +1153,6 @@ export function createRenderer(canvas) {
         ctx.translate(p.x, p.y);
         ctx.rotate(p.angle);
         if ((s.cloakT || 0) > 0) drawReentry(ctx, s.t, s.cloakT);
-        flame(ctx, s.t, p.thrusting);
         if (p.charging && s.weapon === 3) {
           const u = Math.min(1, p.charge / 0.12);
           ctx.strokeStyle = s.buffs.nova > 0

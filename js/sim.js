@@ -115,18 +115,13 @@ export function startRun(s, opts) {
     angle: s.player.angle, galCd: s.player.galCd, galT: s.player.galT,
     dashCd: s.player.dashCd,
   } : null;
-  Object.assign(s, freshState(), { w, h, phase: "intro", compact, bg: "mars", _placed: true, intro: 0 });
+  Object.assign(s, freshState(), { w, h, phase: "play", compact, bg: "mars", _placed: true });
   if (keep) {
     Object.assign(s.player, keep);
   } else {
     s.player.x = w / 2;
     s.player.y = h * 0.62;
   }
-}
-
-export function finishIntro(s) {
-  s.phase = "play";
-  s.intro = 99;
   startWave(s, 0);
 }
 
@@ -1049,15 +1044,6 @@ function tickLoose(s, raw) {
 
 export function step(s, dt, input) {
   const raw = Math.min(0.033, dt);
-  if (s.phase === "intro") {
-    s.t += raw;
-    s.intro = (s.intro || 0) + raw;
-    s.shake = Math.max(0, s.shake - raw * 18);
-    if (s.intro > 2.15 && s.intro < 2.55) s.shake = Math.max(s.shake, 12);
-    if (s.intro > 7.8 || input.skip) finishIntro(s);
-    tickLoose(s, raw);
-    return;
-  }
   if (s.phase === "title") {
     s.t += raw;
     s.shake = Math.max(0, s.shake - raw * 28);
