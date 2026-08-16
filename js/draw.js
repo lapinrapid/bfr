@@ -387,10 +387,14 @@ export function drawStarship(ctx, size, t, thrusting) {
     ctx.rotate(Math.PI / 4);
     ctx.drawImage(img, -wid * 0.5, -hgt * 0.5, wid, hgt);
     if (thrusting) {
+      // Engine sits at the photo's bottom-left; after 45° that lands on the -X axis.
+      const k = Math.SQRT1_2;
+      const ex = -(wid + hgt) * k * 0.5 + Math.min(wid, hgt) * 0.16;
+      const ey = (-wid + hgt) * k * 0.5;
       ctx.save();
-      ctx.translate(-wid * 0.34, hgt * 0.08);
+      ctx.translate(ex, ey);
       ctx.rotate(Math.PI);
-      flame(ctx, t, true, Math.max(14, size * 0.85));
+      flame(ctx, t, true, Math.max(16, size * 0.95));
       ctx.restore();
     }
     ctx.restore();

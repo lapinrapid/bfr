@@ -45,7 +45,7 @@ const touch = isTouch();
 let firing = false;
 let hyperPulse = false;
 let galPulse = false;
-let wantGameOver = false;
+
 const tilt = { x: 0, y: 0, ready: false };
 const drag = { on: false, x: 0, y: 0, sx: 0, sy: 0 };
 let calib = null;
@@ -72,11 +72,6 @@ function setPhaseUI(phase) {
   $("win").hidden = phase !== "win";
   $("bossbar").hidden = phase !== "boss";
   if (phase !== "play" && phase !== "boss") $("menu").hidden = true;
-  if (phase !== "dead") {
-    $("btn-again").hidden = false;
-    $("btn-gameover").hidden = true;
-    wantGameOver = false;
-  }
 }
 
 function setPaused(on) {
@@ -177,7 +172,6 @@ function play() {
     keepFlight: state.phase === "title",
   });
   firing = false;
-  wantGameOver = false;
   prev.kills = 0;
   prev.weapon = 1;
   prev.hp = 4;
@@ -327,13 +321,6 @@ $("btn-win").addEventListener("pointerdown", (e) => {
   e.stopPropagation();
   play();
 });
-$("btn-gameover").addEventListener("pointerdown", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  wantGameOver = false;
-  $("btn-again").hidden = false;
-  $("btn-gameover").hidden = true;
-});
 
 renderer.resize();
 setPhaseUI("title");
@@ -380,9 +367,6 @@ function frame(now) {
   if (state.phase === "dead" && prev.phase !== "dead") {
     sfx.dead();
     firing = false;
-    wantGameOver = true;
-    $("btn-again").hidden = true;
-    $("btn-gameover").hidden = false;
     showBest($("best-dead"), writeBest(state.score));
     setPhaseUI("dead");
   }
