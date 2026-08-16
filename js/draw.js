@@ -76,23 +76,21 @@ const roadsterImg = new Image();
 roadsterImg.src = "img/roadster.png";
 
 const shipRaw = new Image();
-let shipKeyed = null;
-function keyStarship() {
-  if (!shipRaw.naturalWidth || shipKeyed) return;
-  const src = document.createElement("canvas");
-  src.width = shipRaw.naturalWidth;
-  src.height = shipRaw.naturalHeight;
+let shipSprite = null;
+
+function cropOpaque(src) {
+  const w = src.width;
+  const h = src.height;
   const g = src.getContext("2d");
-  g.drawImage(shipRaw, 0, 0);
-  const data = g.getImageData(0, 0, src.width, src.height);
+  const data = g.getImageData(0, 0, w, h);
   const p = data.data;
-  let minX = src.width;
-  let minY = src.height;
+  let minX = w;
+  let minY = h;
   let maxX = 0;
   let maxY = 0;
-  for (let y = 0; y < src.height; y++) {
-    for (let x = 0; x < src.width; x++) {
-      const i = (y * src.width + x) * 4;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
       const r = p[i];
       const gv = p[i + 1];
       const b = p[i + 2];
@@ -100,8 +98,8 @@ function keyStarship() {
         p[i + 3] = 0;
         continue;
       }
-      if (r > 210 && gv > 210 && b > 210) p[i + 3] = Math.max(0, 255 - (r + gv + b - 630));
-      if (p[i + 3] > 24) {
+      if (r > 208 && gv > 208 && b > 208) p[i + 3] = Math.max(0, 255 - (r + gv + b - 624));
+      if (p[i + 3] > 28) {
         if (x < minX) minX = x;
         if (y < minY) minY = y;
         if (x > maxX) maxX = x;
@@ -110,16 +108,136 @@ function keyStarship() {
     }
   }
   g.putImageData(data, 0, 0);
-  const pad = 4;
+  const pad = 2;
   minX = Math.max(0, minX - pad);
   minY = Math.max(0, minY - pad);
-  maxX = Math.min(src.width - 1, maxX + pad);
-  maxY = Math.min(src.height - 1, maxY + pad);
+  maxX = Math.min(w - 1, maxX + pad);
+  maxY = Math.min(h - 1, maxY + pad);
   const c = document.createElement("canvas");
   c.width = Math.max(1, maxX - minX + 1);
   c.height = Math.max(1, maxY - minY + 1);
   c.getContext("2d").drawImage(src, minX, minY, c.width, c.height, 0, 0, c.width, c.height);
-  shipKeyed = c;
+  return c;
+}
+
+function opaquePoints(canvas) {
+  const w = canvas.width;
+  const h = canvas.height;
+  const p = canvas.getContext("2d").getImageData(0, 0, w, h).data;
+  const pts = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (p[(y * w + x) * 4 + 3] > 28) pts.push(x, y);
+    }
+  }
+  return pts;
+}
+
+function buildShipSprite(raw) {
+  const keyed = cropOpaque(raw);
+  const pts = opaquePoints(keyed);
+  if (pts.length < 8) return { img: keyed, nx: -keyed.width * 0.45, ny: 0 };
+
+  let sx = 0;
+  let sy = 0;
+  const n = pts.length / 2;
+  for (let i = 0; i < pts.length; i += 2) {
+    sx += pts[i];
+    sy += pts[i + 1];
+  }
+  const cx = sx / n;
+  const cy = sy / n;
+  let sxx = 0;
+  let syy = 0;
+  let sxy = 0;
+  for (let i = 0; i < pts.length; i += 2) {
+    const dx = pts[i] - cx;
+    const dy = pts[i + 1] - cy;
+    sxx += dx * dx;
+    syy += dy * dy;
+    sxy += dx * dy;
+  }
+  let axis = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+
+  let minA = 1e9;
+  let maxA = -1e9;
+  for (let i = 0; i < pts.length; i += 2) {
+    const a = (pts[i] - cx) * Math.cos(axis) + (pts[i + 1] - cy) * Math.sin(axis);
+    if (a < minA) minA = a;
+    if (a > maxA) maxA = a;
+  }
+  const span = maxA - minA;
+  const band = Math.max(12, span * 0.06);
+
+  const widthAt = (along) => {
+    const tx = Math.cos(axis);
+    const ty = Math.sin(axis);
+    const px = -ty;
+    const py = tx;
+    let lo = 1e9;
+    let hi = -1e9;
+    for (let i = 0; i < pts.length; i += 2) {
+      const dx = pts[i] - cx;
+      const dy = pts[i + 1] - cy;
+      if (Math.abs(dx * tx + dy * ty - along) > band) continue;
+      const lat = dx * px + dy * py;
+      if (lat < lo) lo = lat;
+      if (lat > hi) hi = lat;
+    }
+    return hi - lo;
+  };
+
+  const wNose = widthAt(maxA - span * 0.14);
+  const wTail = widthAt(minA + span * 0.14);
+  if (wNose > wTail) axis += Math.PI;
+
+  const rot = -axis;
+  const diag = Math.ceil(Math.hypot(keyed.width, keyed.height));
+  const spun = document.createElement("canvas");
+  spun.width = diag;
+  spun.height = diag;
+  const sg = spun.getContext("2d");
+  sg.translate(diag / 2, diag / 2);
+  sg.rotate(rot);
+  sg.drawImage(keyed, -cx, -cy);
+  const aligned = cropOpaque(spun);
+
+  const ap = aligned.getContext("2d").getImageData(0, 0, aligned.width, aligned.height).data;
+  const aw = aligned.width;
+  const ah = aligned.height;
+  let left = aw;
+  for (let y = 0; y < ah; y++) {
+    for (let x = 0; x < aw; x++) {
+      if (ap[(y * aw + x) * 4 + 3] > 40 && x < left) left = x;
+    }
+  }
+  const band = Math.max(4, Math.round(aw * 0.06));
+  let ny = 0;
+  let nc = 0;
+  let nx = 0;
+  for (let y = 0; y < ah; y++) {
+    for (let x = left; x < Math.min(aw, left + band); x++) {
+      if (ap[(y * aw + x) * 4 + 3] > 40) {
+        nx += x;
+        ny += y;
+        nc += 1;
+      }
+    }
+  }
+  return {
+    img: aligned,
+    nx: (nc ? nx / nc : left) - aw / 2,
+    ny: (nc ? ny / nc : ah / 2) - ah / 2,
+  };
+}
+
+function keyStarship() {
+  if (!shipRaw.naturalWidth || shipSprite) return;
+  const src = document.createElement("canvas");
+  src.width = shipRaw.naturalWidth;
+  src.height = shipRaw.naturalHeight;
+  src.getContext("2d").drawImage(shipRaw, 0, 0);
+  shipSprite = buildShipSprite(src);
 }
 shipRaw.onload = keyStarship;
 shipRaw.src = "img/starship.png";
@@ -325,76 +443,47 @@ function drawReentry(ctx, t, remaining) {
 
 function flame(ctx, t, on, scale = 22) {
   if (!on) return;
-  const flick = 0.82 + Math.sin(t * 47) * 0.12 + Math.sin(t * 83) * 0.07;
-  const len = scale * (1.35 + flick * 0.55);
-  const mouth = scale * 0.22;
-
+  const flick = 0.84 + Math.sin(t * 51) * 0.1 + Math.sin(t * 89) * 0.06;
+  const len = scale * (1.55 + flick * 0.4);
+  const mouth = scale * 0.18;
   ctx.save();
-  // outer glow
-  const glow = ctx.createRadialGradient(0, 0, mouth, len * 0.45, 0, len);
-  glow.addColorStop(0, "rgba(255, 170, 60, 0.35)");
-  glow.addColorStop(0.55, "rgba(255, 80, 20, 0.12)");
+  ctx.globalCompositeOperation = "lighter";
+  const glow = ctx.createLinearGradient(0, 0, -len, 0);
+  glow.addColorStop(0, "rgba(255, 230, 180, 0.85)");
+  glow.addColorStop(0.18, "rgba(255, 170, 70, 0.7)");
+  glow.addColorStop(0.55, "rgba(255, 80, 20, 0.28)");
   glow.addColorStop(1, "rgba(255, 40, 0, 0)");
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.ellipse(len * 0.38, 0, len * 0.62, scale * 0.42, 0, 0, Math.PI * 2);
+  ctx.moveTo(0, -mouth);
+  ctx.quadraticCurveTo(-len * 0.35, -mouth * 1.6 * flick, -len, 0);
+  ctx.quadraticCurveTo(-len * 0.35, mouth * 1.6 * flick, 0, mouth);
+  ctx.closePath();
   ctx.fill();
-
-  // expanding cone from the bell
-  for (let i = 0; i < 5; i++) {
-    const u = i / 5;
-    const wob = Math.sin(t * 29 + i * 1.7) * scale * 0.08;
-    const tip = len * (0.55 + u * 0.5) * flick;
-    const half = mouth * (1 + u * 2.4);
-    ctx.globalAlpha = (0.55 - u * 0.42) * flick;
-    ctx.fillStyle = i < 1 ? "#fff8e0" : i < 3 ? "#ffb347" : "#ff4a14";
-    ctx.beginPath();
-    ctx.moveTo(0, -mouth * 0.7);
-    ctx.quadraticCurveTo(tip * 0.4, wob - half * 0.35, tip, wob * 0.2);
-    ctx.quadraticCurveTo(tip * 0.4, wob + half * 0.35, 0, mouth * 0.7);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // Mach-diamond core
-  ctx.globalAlpha = 0.85 * flick;
-  const core = ctx.createLinearGradient(0, 0, len * 0.7, 0);
-  core.addColorStop(0, "rgba(200, 230, 255, 0.95)");
-  core.addColorStop(0.22, "rgba(255, 255, 240, 0.9)");
-  core.addColorStop(0.7, "rgba(255, 180, 70, 0.25)");
-  core.addColorStop(1, "rgba(255, 80, 20, 0)");
-  ctx.fillStyle = core;
+  ctx.fillStyle = `rgba(255,255,255,${0.55 * flick})`;
   ctx.beginPath();
-  ctx.ellipse(len * 0.22, 0, len * 0.32, mouth * 0.55, 0, 0, Math.PI * 2);
+  ctx.ellipse(-len * 0.18, 0, len * 0.22, mouth * 0.45, 0, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.globalAlpha = 0.55;
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = `rgba(180, 220, 255, ${0.4 * flick})`;
   ctx.beginPath();
-  ctx.ellipse(mouth * 0.4, 0, mouth * 0.7, mouth * 0.35, 0, 0, Math.PI * 2);
+  ctx.ellipse(-mouth * 0.2, 0, mouth * 0.9, mouth * 0.38, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
 export function drawStarship(ctx, size, t, thrusting) {
-  const img = shipKeyed && shipKeyed.width ? shipKeyed : null;
-  if (img) {
-    const hgt = size * 2.55;
-    const wid = hgt * (img.width / img.height);
+  const spr = shipSprite;
+  if (spr && spr.img) {
+    const img = spr.img;
+    const hgt = size * 2.4;
+    const scale = hgt / img.height;
+    const wid = img.width * scale;
     ctx.save();
-    // Photo points nose up-right; rotate so nose is +X like the rest of the game.
-    ctx.rotate(Math.PI / 4);
-    ctx.drawImage(img, -wid * 0.5, -hgt * 0.5, wid, hgt);
+    ctx.drawImage(img, -wid / 2, -hgt / 2, wid, hgt);
     if (thrusting) {
-      // Engine sits at the photo's bottom-left; after 45° that lands on the -X axis.
-      const k = Math.SQRT1_2;
-      const ex = -(wid + hgt) * k * 0.5 + Math.min(wid, hgt) * 0.16;
-      const ey = (-wid + hgt) * k * 0.5;
       ctx.save();
-      ctx.translate(ex, ey);
-      ctx.rotate(Math.PI);
-      flame(ctx, t, true, Math.max(16, size * 0.95));
+      ctx.translate(spr.nx * scale, spr.ny * scale);
+      flame(ctx, t, true, Math.max(15, size * 0.9));
       ctx.restore();
     }
     ctx.restore();
